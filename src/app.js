@@ -7,6 +7,8 @@ import { homePage, listPage, listingPage, addPage, notFoundPage, actionUrl, esc 
 import { matchScore, uniqueSlug, parseLatLng, normalize } from './util.js';
 import { hashPassword, verifyPassword, createSession, checkSession, parseCookies, RateLimiter } from './auth.js';
 import { send, readJson, clientIp, originOf, serveStatic, sendFile, cookie, VERSION } from './http.js';
+import { demoConfig, resetData } from './demo-mode.js';
+import { buildDemo } from './demo-data.js';
 
 export const TEMPLATES = {
   food: { ar: [['🍽️', 'مطاعم', 'Restaurant'], ['☕', 'كافيهات', 'CafeOrCoffeeShop'], ['🍰', 'حلويات', 'Bakery'], ['🥖', 'مخابز', 'Bakery'], ['🍲', 'أكل بيتي', 'FoodEstablishment'], ['🛵', 'توصيل', 'FoodEstablishment']], en: [['🍽️', 'Restaurants', 'Restaurant'], ['☕', 'Cafés', 'CafeOrCoffeeShop'], ['🍰', 'Desserts', 'Bakery'], ['🥖', 'Bakeries', 'Bakery'], ['🍲', 'Home food', 'FoodEstablishment'], ['🛵', 'Delivery', 'FoodEstablishment']] },
@@ -39,7 +41,7 @@ function sniff(b) {
 const cleanUrl = (u) => (/^(https?:\/\/)?[\w.-]+\.[a-z]{2,}(\/\S*)?$/i.test(String(u || '').trim()) ? String(u).trim() : '');
 const cleanHours = (h) => (Array.isArray(h) && h.length === 7 ? h.map((d) => (Array.isArray(d) && /^\d{1,2}:\d{2}$/.test(d[0]) && /^\d{1,2}:\d{2}$/.test(d[1]) ? [d[0].padStart(5, '0'), d[1].padStart(5, '0')] : null)) : null);
 
-export function createApp({ dataDir, setupToken = process.env.SETUP_TOKEN || '' } = {}) {
+export function createApp({ dataDir, setupToken = process.env.SETUP_TOKEN || '', env = process.env } = {}) {
   fs.mkdirSync(path.join(dataDir, 'media'), { recursive: true });
   const file = path.join(dataDir, 'daleel.json');
   const def = defaultData();
@@ -49,6 +51,11 @@ export function createApp({ dataDir, setupToken = process.env.SETUP_TOKEN || '' 
   const flush = () => { clearTimeout(timer); fs.writeFileSync(file + '.tmp', JSON.stringify(data)); fs.renameSync(file + '.tmp', file); };
   const save = () => { clearTimeout(timer); timer = setTimeout(flush, 300); };
   if (!loaded) flush();
+  // DEMO_MODE=true: a public showcase with sample data that resets on a timer.
+  const demo = demoConfig(env);
+  const resetDemo = () => { resetData(data, () => buildDemo(demo), demo); flush(); };
+  let demoTimer = null;
+  if (demo) { resetDemo(); demoTimer = setInterval(resetDemo, demo.resetMinutes * 60_000); demoTimer.unref?.(); }
 
   const loginLimiter = new RateLimiter(10, 15 * 60_000);
   const publicLimiter = new RateLimiter(8, 60 * 60_000);
@@ -155,7 +162,7 @@ export function createApp({ dataDir, setupToken = process.env.SETUP_TOKEN || '' 
 
     // admin SPA
     if (method === 'GET' && (p === '/admin' || p === '/admin/')) return serveStatic(res, 'admin.html');
-    if (method === 'GET' && /^\/(admin\.js|style\.css)$/.test(p)) return serveStatic(res, p.slice(1));
+    if (method === 'GET' && /^\/(admin\.js|style\.css|demo\.js)$/.test(p)) return serveStatic(res, p.slice(1));
 
     if (!data.admin && method === 'GET' && !p.startsWith('/api/')) return send(res, 302, '', { location: '/admin' });
 
@@ -249,7 +256,8 @@ export function createApp({ dataDir, setupToken = process.env.SETUP_TOKEN || '' 
     }
 
     // ----- admin auth -----
-    if (p === '/api/session' && method === 'GET') return send(res, 200, { needsSetup: !data.admin, authed: isAuthed(req), setupTokenRequired: Boolean(setupToken), version: VERSION, templates: Object.keys(TEMPLATES) });
+    if (demo && method === 'POST' && (p === '/api/setup' || p === '/api/password')) return send(res, 403, { error: 'Not available in the demo' });
+    if (p === '/api/session' && method === 'GET') return send(res, 200, { needsSetup: !data.admin, authed: isAuthed(req), setupTokenRequired: Boolean(setupToken), version: VERSION, templates: Object.keys(TEMPLATES), demo: demo ? { password: demo.password, resetMinutes: demo.resetMinutes } : null });
     if (p === '/api/setup' && method === 'POST') {
       if (data.admin) return send(res, 409, { error: 'Already set up' });
       const body = await readJson(req);
@@ -439,9 +447,10 @@ export function createApp({ dataDir, setupToken = process.env.SETUP_TOKEN || '' 
     });
   });
   return {
+    resetDemo,
     server, data,
     async start(port) { await new Promise((r) => server.listen(port, r)); return server.address().port; },
-    async stop() { flush(); await new Promise((r) => server.close(r)); },
+    async stop() { clearInterval(demoTimer); flush(); await new Promise((r) => server.close(r)); },
   };
 }
 
