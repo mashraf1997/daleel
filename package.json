@@ -1,0 +1,16 @@
+{
+  "name": "daleel",
+  "version": "0.1.0",
+  "description": "Open-source directory website for places and services: listings with photos, hours, map and WhatsApp, reviews, submissions and featured listings. Built for search engines and Arabic.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {},
+  "license": "MIT",
+  "keywords": ["directory", "listings", "local-business", "yellow-pages", "seo", "arabic", "self-hosted"]
+}

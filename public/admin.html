@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Daleel admin</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+<style>
+  :root { --accent: #B45309; --accent-soft: #FEF3C7; }
+  @media (prefers-color-scheme: dark) { :root { --accent: #FBBF24; --accent-ink: #2A1A05; --accent-soft: #3A2A0C; } }
+  .photos { display: flex; gap: 8px; flex-wrap: wrap; }
+  .photos figure { margin: 0; position: relative; width: 110px; height: 80px; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); }
+  .photos img { width: 100%; height: 100%; object-fit: cover; }
+  .photos button { position: absolute; top: 4px; inset-inline-end: 4px; border: 0; border-radius: 6px; background: rgba(0,0,0,.6); color: #fff; cursor: pointer; padding: 0 6px; }
+  .hrs { display: grid; gap: 6px; }
+  .hrs .r { display: grid; grid-template-columns: 110px auto 1fr 1fr; gap: 8px; align-items: center; }
+  .hrs input[type=time] { padding: 6px 8px; }
+  .tax-row { display: flex; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .tax-row input.ic { width: 60px; text-align: center; }
+  @media (max-width: 600px) { .hrs .r { grid-template-columns: 1fr auto; } }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast" role="status"></div>
+<script src="/admin.js"></script>
+</body>
+</html>
